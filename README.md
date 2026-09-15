@@ -1,3 +1,15 @@
+# Lua RE for IDA 9.4
+
+This maintained fork adds one loader and plugin for **Lua 5.1–5.4**, source
+recovery with unluac, and a generic IDA MCP decompiler-provider integration.
+
+**[Install and use Lua RE →](lua/ida/README.md)**
+
+The extension is under `lua/ida`. The original reverse-engineering notes and
+older scripts are preserved below.
+
+---
+
 # 逆向笔记
 
 环境搭建与逆向笔记

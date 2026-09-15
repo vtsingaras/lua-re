@@ -1,0 +1,5 @@
+Metadata-Version: 2.1
+Name: lua-re-ida
+Version: 1.0.0
+Summary: Lua 5.1-5.4 bytecode analysis and decompiler provider for IDA 9.4
+License: AGPL-3.0

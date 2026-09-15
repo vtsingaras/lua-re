@@ -1,0 +1,20 @@
+name: Lua RE
+on:
+  push:
+    paths: ['lua/ida/**', '.github/workflows/lua-re.yml']
+  pull_request:
+    paths: ['lua/ida/**', '.github/workflows/lua-re.yml']
+permissions:
+  contents: read
+jobs:
+  parser-and-runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Test parsers, dataflow and runtime selection
+        working-directory: lua/ida
+        run: PYTHONPATH=. python3 -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Verify bundled unluac
+        working-directory: lua/ida
+        run: |
+          echo '98be0fa84ac73ca66dce2842a2e4512226f4c611b6500dc96415571fc5538fcc  vendor/unluac.jar' | sha256sum -c -

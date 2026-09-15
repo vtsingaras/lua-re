@@ -1,0 +1,2 @@
+[ida_pro_mcp.decompiler_providers]
+lua_re = lua_re_ida.mcp_provider:create_provider
