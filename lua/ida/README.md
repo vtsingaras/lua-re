@@ -128,12 +128,24 @@ python3 -m lua_re_ida sample.luac --standard -o normalized.luac
 
 - Standard format-0 Lua 5.1–5.4 chunks, little or big endian, supported 4/8-byte
   scalar widths, debug and stripped functions.
+- LNUM/OpenWrt dual-number chunks: the shared Lua 5.1/5.2 reader recognizes
+  2-, 4- and 8-byte signed integer payloads (constant tags `9` and `254`)
+  alongside 4- or 8-byte floating-point numbers. The header must explicitly
+  declare LNUM; unknown tags in stock chunks are still rejected. Lua 5.1 is
+  validated against OpenWrt bytecode; the same legacy layout under Lua 5.2 is
+  covered by synthetic fixtures. Lua 5.3/5.4 use their native integer/float
+  encodings and preserve full 64-bit integer precision.
 - The observed GL.iNet Lua 5.4 compact header, whose numeric sentinels are
   replaced by a zero byte. Only that specific variant is recognized.
 - Four-byte Lua instructions; bounded counts, offsets, nesting and chunk size.
 - LuaJIT, Lua 5.5, encrypted chunks and custom opcode permutations are not supported.
 - unluac may fail on nonstandard or obfuscated control flow. Errors are returned
   explicitly; disassembly remains available. Decompiled output requires review.
+- LNUM source recovery converts a temporary copy to stock Lua 5.1/5.2 numbers.
+  Original bytes, integer values and IDA addresses remain unchanged. Integers
+  that cannot be represented exactly as doubles cause an explicit recovery
+  error instead of silent rounding; disassembly remains available. LNUM
+  complex numbers and extended-precision floating-point formats are unsupported.
 - Native operation is validated on macOS ARM64 with IDA 9.4. Python code and Java
   discovery include Windows/Linux support; those platforms need their own IDA
   runtime validation. No compatibility claim is made for IDA 9.2.
@@ -152,6 +164,9 @@ PYTHONPATH=. python3 tests/check_compilers.py \
 The compiler check compares every opcode, operand, debug line and branch target
 with each official `luac`, compiles every recovered function, and checks exact
 instruction/constant recovery for the debug fixture's whole chunk.
+The numeric regression suite covers both legacy LNUM headers, all supported
+integer widths, both integer tags, endianness, debug/stripped nested closures,
+truncation, exact normalization and full-width native Lua 5.3/5.4 integers.
 
 With an IDA-enabled Python, run `tests/ida_smoke.py` on a **disposable copy**.
 It creates/saves an IDB and verifies functions, instruction sizes, CFG edges,
@@ -172,6 +187,9 @@ reverse-engineering articles and scripts retain their upstream authorship.
 The format is implemented against official Lua `lundump.c`, `lopcodes.h`,
 `lvm.c` and `ldebug.c` for each supported release. `XUCharles/lua5.4_parser`
 was reviewed as a reference; its code was not copied.
+The LNUM layout follows OpenWrt's
+[numeric-format patch](https://github.com/openwrt/openwrt/blob/main/package/utils/lua/patches/010-lua-5.1.3-lnum-full-260308.patch)
+and [architecture-independent bytecode patch](https://github.com/openwrt/openwrt/blob/main/package/utils/lua/patches/030-archindependent-bytecode.patch).
 
 The included **unluac v1.2.3.569** is MIT-licensed; see
 [vendor/unluac-LICENSE.txt](vendor/unluac-LICENSE.txt). Its official download is

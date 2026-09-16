@@ -74,6 +74,12 @@ class LegacyReader(Reader):
             elif tag == 3:
                 value = self.number(self.integral)
                 normalized = 3 if self.integral else 19
+            elif self.lnum and tag in (9, 254):
+                # LNUM uses a separate signed lua_Integer payload. Upstream
+                # LNUM uses -2 (serialized as 254); OpenWrt/vendor builds also
+                # use the documented alternative tag 9. Never infer this from
+                # an unknown constant in a stock chunk.
+                value, normalized = self.number(True), 3
             elif tag == 19 and self.version == 0x53:
                 value, normalized = self.number(True), 3
             elif tag == 4 or (tag == 20 and self.version == 0x53):
@@ -145,24 +151,33 @@ def parse_legacy(data):
     r.version, fmt = r.byte(), r.byte()
     if r.version not in OPCODES or fmt != 0:
         r.error('unsupported Lua version or format')
-    r.integral = False
+    r.integral = r.lnum = False
+    variant = 'standard'
     if r.version < 0x53:
         endian = r.byte()
         if endian not in (0, 1):
             r.error('invalid endianness')
         r.endian = '<' if endian else '>'
         r.int_size, r.size_t, iw, r.number_size, integral = [r.byte() for _ in range(5)]
-        if integral not in (0, 1):
+        if integral in (2, 4, 8):
+            # LNUM replaces the stock integrality flag with sizeof(lua_Integer).
+            # lua_Number remains floating point and has its own width.
+            r.lnum, r.integer_size = True, integral
+            variant = 'lnum'
+        elif integral in (0, 1):
+            r.integral = bool(integral)
+            r.integer_size = r.number_size
+        else:
             r.error('invalid number representation')
-        r.integral = bool(integral)
-        r.integer_size = r.number_size
         if r.version == 0x52 and r.read(6) != b'\x19\x93\r\n\x1a\n':
             r.error('invalid Lua header tail')
     else:
         if r.read(6) != b'\x19\x93\r\n\x1a\n':
             r.error('invalid Lua header data')
         r.int_size, r.size_t, iw, r.integer_size, r.number_size = [r.byte() for _ in range(5)]
-    if iw != 4 or any(n not in (4, 8) for n in (r.int_size, r.size_t, r.integer_size, r.number_size)):
+    integer_widths = (2, 4, 8) if r.lnum else (4, 8)
+    if (iw != 4 or r.integer_size not in integer_widths
+            or any(n not in (4, 8) for n in (r.int_size, r.size_t, r.number_size))):
         r.error('unsupported integer, size_t, instruction or number width')
     if r.version == 0x53:
         check = r.read(r.integer_size + r.number_size)
@@ -181,7 +196,7 @@ def parse_legacy(data):
         r.error('main closure upvalue count mismatch')
     if r.pos != len(r.data):
         r.error('trailing bytes')
-    chunk = Chunk(r.data, 'standard', r.endian, r.integer_size, r.number_size,
+    chunk = Chunk(r.data, variant, r.endian, r.integer_size, r.number_size,
                   header_size, len(root.upvalues), root, version=r.version)
     validate_legacy(chunk)
     infer_legacy_names(root)

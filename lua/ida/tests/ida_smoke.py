@@ -36,6 +36,11 @@ try:
             errors.append(f'bad function {p.name}: {f}')
             continue
         blocks += len(list(ida_gdl.FlowChart(f)))
+        for k in p.constants:
+            if k.tag in (3, 19):
+                width = c.integer_size if k.tag == 3 else c.number_size
+                if ida_bytes.get_item_size(k.payload) != width:
+                    errors.append(f'bad numeric constant width at {k.payload:#x}')
         for model in p.instructions():
             words += model.size // 4
             count += 1

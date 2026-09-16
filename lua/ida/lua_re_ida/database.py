@@ -182,7 +182,8 @@ def load(li, chunk):
                 target = k.payload
                 ida_bytes.create_strlit(k.payload, len(k.value), ida_nalt.STRTYPE_C)
             elif k.tag == 3:
-                ida_bytes.create_data(k.payload, ida_bytes.FF_QWORD if chunk.integer_size == 8 else ida_bytes.FF_DWORD,
+                ida_bytes.create_data(k.payload, {2: ida_bytes.FF_WORD, 4: ida_bytes.FF_DWORD,
+                                                 8: ida_bytes.FF_QWORD}[chunk.integer_size],
                                       chunk.integer_size, ida_idaapi.BADADDR)
             elif k.tag == 19:
                 ida_bytes.create_data(k.payload, ida_bytes.FF_DOUBLE if chunk.number_size == 8 else ida_bytes.FF_FLOAT,

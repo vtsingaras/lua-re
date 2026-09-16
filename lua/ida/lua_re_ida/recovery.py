@@ -1,7 +1,6 @@
 """Build a temporary, non-executed parent for function-level source recovery."""
 import struct
 from .bytecode import parse, OPNAMES
-from .decompiler import standard_bytes
 
 
 def wrap_prototype(chunk, p, name="lua_re_function"):
@@ -13,9 +12,9 @@ def wrap_prototype(chunk, p, name="lua_re_function"):
     """
     version = chunk.version
     order = 'little' if chunk.endian == '<' else 'big'
-    header = standard_bytes(chunk)
-    header_size = chunk.header_size if chunk.variant == 'standard' else 31
-    header = header[:header_size]
+    # Keep the child's native encoding and header together. Normalization for
+    # unluac happens only after wrapping; LNUM numeric payloads can change size.
+    header = chunk.data[:chunk.header_size]
     if version == 0x54:
         def integer(value):
             result = [value & 127 | 128]

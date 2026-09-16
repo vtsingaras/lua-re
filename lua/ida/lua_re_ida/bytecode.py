@@ -168,7 +168,7 @@ class Reader:
 
     def number(self, integer=False):
         size = self.integer_size if integer else self.number_size
-        fmt = ({4: 'i', 8: 'q'} if integer else {4: 'f', 8: 'd'})[size]
+        fmt = ({2: 'h', 4: 'i', 8: 'q'} if integer else {4: 'f', 8: 'd'})[size]
         return struct.unpack(self.endian + fmt, self.read(size))[0]
 
     def proto(self, path='0', parent_source=b'', depth=0):

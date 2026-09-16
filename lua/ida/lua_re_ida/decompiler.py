@@ -13,9 +13,33 @@ UNLUAC_URL = 'https://downloads.sourceforge.net/project/unluac/Unstable/unluac_2
 UNLUAC_SHA256 = '98be0fa84ac73ca66dce2842a2e4512226f4c611b6500dc96415571fc5538fcc'
 
 def standard_bytes(chunk):
+    """Build a temporary stock-format chunk without changing analysis offsets."""
     if chunk.variant == 'standard':
         return chunk.data
-    return chunk.data[:15] + struct.pack('<qd', 0x5678, 370.5) + chunk.data[16:]
+    if chunk.variant == 'glinet-compact':
+        return chunk.data[:15] + struct.pack('<qd', 0x5678, 370.5) + chunk.data[16:]
+    if chunk.variant == 'lnum':
+        # Stock 5.1/5.2 has only one numeric type. Widen floats to double
+        # and translate signed integer constants without rounding their value.
+        # Counts, instructions, strings and debug records need no rewriting.
+        parts = [chunk.data[:10], bytes([8, 0]), chunk.data[12:chunk.header_size]]
+        cursor = chunk.header_size
+        for p in chunk.prototypes:
+            for k in p.constants:
+                if k.tag not in (3, 19):
+                    continue
+                value = float(k.value)
+                if k.tag == 3 and value != k.value:
+                    raise ValueError(
+                        f'LNUM integer {k.value} at file offset {k.offset:#x} cannot '
+                        f'be represented exactly by stock Lua {chunk.version_string}/unluac; '
+                        'disassembly and integer constants remain available')
+                parts.extend((chunk.data[cursor:k.offset], b'\x03',
+                              struct.pack(chunk.endian + 'd', value)))
+                cursor = k.end
+        parts.append(chunk.data[cursor:])
+        return b''.join(parts)
+    raise ValueError(f'Unsupported bytecode variant: {chunk.variant}')
 
 def find_java():
     from .runtime import selected_java
